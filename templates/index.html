@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analysis App</title>
+</head>
+<body>
+    <h1>Data Analysis App</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit" value="Upload and Analyze">
+    </form>
+    <h2>First Few Rows of DataFrame</h2>
+    <div id="dataframe">
+        {{ df_head_table | safe }}
+    </div>
+    <div id="plot"></div>
+    <script>
+        document.querySelector('form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const response = await fetch('/upload', { method: 'POST', body: formData });
+            const data = await response.json();
+            const plotImg = document.createElement('img');
+            plotImg.src = data.plot_path;
+            document.querySelector('#plot').appendChild(plotImg);
+        });
+    </script>
+</body>
+</html>
