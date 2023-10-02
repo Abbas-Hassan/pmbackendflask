@@ -219,29 +219,29 @@ def upload():
 
         plt.savefig('static/images/pca_segmentation.png')
 
-    #     stored_file = session.get('uploaded_file')
-    # if stored_file:
-    #     print("Stored file path:", stored_file)
-    #     # Use the stored file for further processing
-    #     df = pd.read_csv(stored_file, index_col=0)
-    #     print(df.head())  # Print the first few rows of the DataFrame
+        stored_file = session.get('uploaded_file')
+    if stored_file:
+        print("Stored file path:", stored_file)
+        # Use the stored file for further processing
+        df = pd.read_csv(stored_file, index_col=0)
+        print(df.head())  # Print the first few rows of the DataFrame
 
-    #     numeric_columns = ['Quantity', 'Discount', 'Profit', 'Shipping_Cost', 'Sales']
-    #     unique_products = df['Product'].unique()
+        numeric_columns = ['Quantity', 'Discount', 'Profit', 'Shipping_Cost', 'Sales']
+        unique_products = df['Product'].unique()
 
-    #     # Create a separate graph for each numeric column
-    #     for numeric_col in numeric_columns:
-    #         plt.figure(figsize=(10, 6))
+        # Create a separate graph for each numeric column
+        for numeric_col in numeric_columns:
+            plt.figure(figsize=(10, 6))
             
-    #         # Group data by product and calculate mean of the numeric column
-    #         grouped_data = df.groupby('Product')[numeric_col].mean().reset_index()
+            # Group data by product and calculate mean of the numeric column
+            grouped_data = df.groupby('Product')[numeric_col].mean().reset_index()
             
-    #         sns.barplot(data=grouped_data, x='Product', y=numeric_col)
-    #         plt.title(f'{numeric_col} for Different Products')
-    #         plt.xlabel('Product')
-    #         plt.ylabel(numeric_col)
-    #         plt.xticks(rotation=90)
-    #     plt.savefig('static/images/total_sales_by_gender.png')
+            sns.barplot(data=grouped_data, x='Product', y=numeric_col)
+            plt.title(f'{numeric_col} for Different Products')
+            plt.xlabel('Product')
+            plt.ylabel(numeric_col)
+            plt.xticks(rotation=90)
+        plt.savefig('static/images/total_sales_by_gender.png')
 
         plot_path = {
             'heatmap': 'static/images/heatmap.png',
@@ -270,35 +270,84 @@ def upload_file():
 @app.route('/get_bar_plot_coordinates', methods=['GET'])
 def get_bar_plot_coordinates():
     if request.method == 'GET':
-        uploaded_file = session.get('uploaded_file')
-        if uploaded_file is not None:
-            uploaded_df = pd.read_csv('C:/Users/Lenovo/OneDrive/Desktop/pmbackendflask/E-commerce Dataset.csv', index_col=0)
-            numeric_columns = ['Quantity', 'Discount', 'Profit', 'Shipping_Cost', 'Sales']
-            bar_coords_list = []
+        uploaded_df = pd.read_csv('./E-commerce Dataset.csv', index_col=0)
+        numeric_column = 'Sales' 
+        uploaded_df = uploaded_df[uploaded_df['Payment_method'] != 'not_defined'] # Choose the numeric column you want to use
+        
+        # Group data by product and calculate sum of the quantity
+        grouped_data_product = uploaded_df.groupby('Product')['Quantity'].sum().reset_index()
+        
+        # Get the top 10 products with highest sum of quantities
+        top_products = grouped_data_product.nlargest(10, 'Quantity')
+        
+        x_coords_top_products = top_products['Product'].tolist()
+        y_coords_top_products = top_products['Quantity'].tolist()
+        
+        # Group data by Product_Category and calculate mean of the numeric column
+        grouped_data_category = uploaded_df.groupby('Product_Category')['Quantity'].sum().reset_index()
+        
+        x_coords_category = grouped_data_category['Product_Category'].tolist()
+        y_coords_category = grouped_data_category['Quantity'].tolist()
+        
+        # Calculate percentages for pie charts
+        total_sales = uploaded_df['Sales'].sum()
+        sales_by_gender = uploaded_df.groupby('Gender')['Sales'].sum()
+        sales_by_device_type = uploaded_df.groupby('Device_Type')['Sales'].sum()
+        sales_by_payment_method = uploaded_df.groupby('Payment_method')['Sales'].sum()
+        sales_by_login_type = uploaded_df.groupby('Customer_Login_type')['Sales'].sum()
+        
+        sales_by_gender_percentage = (sales_by_gender / total_sales * 100).tolist()
+        sales_by_device_type_percentage = (sales_by_device_type / total_sales * 100).tolist()
+        sales_by_payment_method_percentage = (sales_by_payment_method / total_sales * 100).tolist()
+        sales_by_login_type_percentage = (sales_by_login_type / total_sales * 100).tolist()
+        
+        # Get the corresponding labels for pie charts
+        gender_labels = sales_by_gender.index.tolist()
+        device_labels = sales_by_device_type.index.tolist()
+        payment_method_labels = sales_by_payment_method.index.tolist()
+        login_type_labels = sales_by_login_type.index.tolist()
+        
+        # Calculate total customers and total profit
+        total_customers = int(uploaded_df['Gender'].count())
+        total_profit = int(uploaded_df['Profit'].sum())
 
-            for numeric_col in numeric_columns:
-                # Group data by product and calculate mean of the numeric column
-                grouped_data = uploaded_df.groupby('Product')[numeric_col].mean().reset_index()
-                bar_coords = []
+        return jsonify({
+            'top_products': {
+                'x_coords': x_coords_top_products,
+                'y_coords': y_coords_top_products
+            },
+            'sales_by_category': {
+                'x_coords': x_coords_category,
+                'y_coords': y_coords_category
+            },
+            'sales_by_gender': {
+                'labels': gender_labels,
+                'percentages': sales_by_gender_percentage
+            },
+            'sales_by_device_type': {
+                'labels': device_labels,
+                'percentages': sales_by_device_type_percentage
+            },
+            'sales_by_payment_method': {
+                'labels': payment_method_labels,
+                'percentages': sales_by_payment_method_percentage
+            },
+            'sales_by_login_type': {
+                'labels': login_type_labels,
+                'percentages': sales_by_login_type_percentage
+            },
+            'total_customers': total_customers,
+            'total_sales': total_sales,
+            'total_profit': total_profit
+        })
 
-                for i, (_, row) in enumerate(grouped_data.iterrows()):
-                    bar_coords.append({'x': row['Product'], 'y': row[numeric_col]})
-                
-                bar_coords_list.append({numeric_col: bar_coords})
-            
-            # Calculate total customers, total sales, and total profit
-            total_customers = int(uploaded_df['Gender'].count())
-            total_sales = int(uploaded_df['Sales'].sum())
-            total_profit = int(uploaded_df['Profit'].sum())
+        # else:
+        #     return jsonify({'error': 'No file uploaded'})
 
-            return jsonify({
-                'bar_coords': bar_coords_list,
-                'total_customers': total_customers,
-                'total_sales': total_sales,
-                'total_profit': total_profit
-            })
-        else:
-            return jsonify({'error': 'No file uploaded'})
+
+
+
+
 
 
     
